@@ -135,12 +135,12 @@ int main(void) {
                 break;
 
             case COMP:
-                prev_char = cur_char;
                 uart_putc(payload);
                 state = CLEAN;
                 break;
 
             case CLEAN:
+                prev_char = cur_char;
                 cur_char = 0;
                 payload = 0;
                 cont = 0;
