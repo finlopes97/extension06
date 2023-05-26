@@ -39,15 +39,15 @@
 #include "header_2_electric_boogaloo.h"
 
 typedef enum {
-    START, // Initial state, user can enter 'f' or 'b', save to var x
-    ESCAPE, // Escape state, user can enter 'o' or 'b', check x and goto PRE_FOO or PRE_BAR
-    PRE_FOO, // User can enter 'o', goto FOO_COMP
-    PRE_BAR, // User can enter 'a', goto BAR_COMP
-    FOO_COMP, // User can enter 'b' to go to ESCAPE, set CONT == 1, any other character print '0', goto COMP
-    BAR_COMP, // User can enter any character print, if CONT == 0 print '1', goto NEWLINE
-    NEWLINE, // If CONT == 1, print line feed '\n', set CONT == 0, goto START
-    COMP // Clean exit, goto START
-} state;
+    START,
+    PRE_FOO,
+    PRE_BAR,
+    FOO_COMP,
+    BAR_COMP,
+    CONT,
+    COMP,
+    CLEAN
+} foobar_states;
 
 void uart_init(void) {
     PORTB.DIRSET = PIN2_bm; // set TX pin as output
@@ -69,71 +69,74 @@ void uart_putc(uint8_t c) {
 
 int main(void) {
     uart_init();
-    state state_of_denmark = START;
-    volatile uint8_t x = 0;
-    volatile uint8_t CONT = 0;
+    foobar_states state = START;
+    volatile uint8_t cur_char = 0;
+    volatile uint8_t cont = 0;
+    volatile uint8_t payload = 0;
 
     while (1) {
-        switch (state_of_denmark) {
+        switch (state) {
             case START:
-                x = uart_getc();
-                state_of_denmark = ESCAPE;
-                break;
-
-            case ESCAPE:
-                if (x == 'f' && uart_getc() == 'o') {
-                    state_of_denmark = PRE_FOO;
-                } else if (x == 'b' && uart_getc() == 'a') {
-                    state_of_denmark = PRE_BAR;
-                } else { state_of_denmark = START; }
+                cur_char = uart_getc();
+                if (cur_char == 'f') { state = PRE_FOO; }
+                else if (cur_char == 'b') { state = PRE_BAR; }
+                else { ; }
                 break;
 
             case PRE_FOO:
-                if (uart_getc() == 'o') {
-                    state_of_denmark = FOO_COMP;
-                }
-                break;
-
-            case PRE_BAR:
-                if (uart_getc() == 'r') {
-                    state_of_denmark = BAR_COMP;
-                }
+                cur_char = uart_getc();
+                if (cur_char == 'o') { state = FOO_COMP; }
+                // else if (cur_char == 'f') { ; }
+                else { state = CLEAN; }
                 break;
 
             case FOO_COMP:
-                if (uart_getc() == 'b') {
-                    x = 'b';
-                    state_of_denmark = ESCAPE;
-                    CONT = 1;
-                } else {
-                    uart_putc('0');
-                    state_of_denmark = COMP;
-                }
+                cur_char = uart_getc();
+                if (cur_char == 'o') { state = CONT; }
+                else { state = CLEAN; }
+                break;
+
+            case PRE_BAR:
+                cur_char = uart_getc();
+                if (cur_char == 'a') { state = BAR_COMP; }
+                // else if (cur_char == 'b') { ; }
+                else { state = CLEAN; }
                 break;
 
             case BAR_COMP:
-                if (CONT == 1) {
-                    state_of_denmark = NEWLINE;
-                } else if (CONT == 0 && uart_getc()) {
-                    uart_putc('1');
-                    state_of_denmark = COMP;
+                cur_char = uart_getc();
+                if (cur_char == 'r') {
+                    if (cont == 1) { payload = '\n'; }
+                    else if (cont == 0) { payload = '1'; }
+                    state = COMP;
+                } else { state = CLEAN; }
+                break;
+
+            case CONT:
+                if (uart_getc() == 'b') {
+                    state = PRE_BAR;
+                    cont = 1;
+                } else {
+                    payload = '0';
+                    state = COMP;
                 }
                 break;
 
-            case NEWLINE:
-                uart_putc('\n');
-                CONT = 0;
-                state_of_denmark = START;
+            case COMP:
+                uart_putc(payload);
+                state = CLEAN;
                 break;
 
-            case COMP:
-                state_of_denmark = START;
+            case CLEAN:
+                cur_char = 0;
+                payload = 0;
+                cont = 0;
+                state = START;
                 break;
 
             default:
-                state_of_denmark = START;
+                state = START;
                 break;
         }
     }
-
 } // end main()
