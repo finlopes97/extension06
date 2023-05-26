@@ -86,7 +86,7 @@ int main(void) {
             case PRE_FOO:
                 cur_char = uart_getc();
                 if (cur_char == 'o') { state = FOO_COMP; }
-                // else if (cur_char == 'f') { ; }
+                else if (cur_char == 'f') { ; }
                 else { state = CLEAN; }
                 break;
 
@@ -99,7 +99,10 @@ int main(void) {
             case PRE_BAR:
                 cur_char = uart_getc();
                 if (cur_char == 'a') { state = BAR_COMP; }
-                // else if (cur_char == 'b') { ; }
+                else if (cur_char != 'a' && cont == 1) {
+                    payload = '0';
+                    state = COMP;
+                } else if (cur_char == 'b') { cont = 0; }
                 else { state = CLEAN; }
                 break;
 
@@ -109,11 +112,15 @@ int main(void) {
                     if (cont == 1) { payload = '\n'; }
                     else if (cont == 0) { payload = '1'; }
                     state = COMP;
+                } else if (cur_char != 'r' && cont == 1) {
+                    payload = '0';
+                    state = COMP;
                 } else { state = CLEAN; }
                 break;
 
             case CONT:
-                if (uart_getc() == 'b') {
+                cur_char = uart_getc();
+                if (cur_char == 'b') {
                     state = PRE_BAR;
                     cont = 1;
                 } else {
