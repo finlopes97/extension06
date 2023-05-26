@@ -71,16 +71,21 @@ int main(void) {
     uart_init();
     foobar_states state = START;
     volatile uint8_t cur_char = 0;
+    volatile uint8_t prev_char = 0;
     volatile uint8_t cont = 0;
     volatile uint8_t payload = 0;
 
     while (1) {
         switch (state) {
             case START:
-                cur_char = uart_getc();
-                if (cur_char == 'f') { state = PRE_FOO; }
-                else if (cur_char == 'b') { state = PRE_BAR; }
-                else { ; }
+                if (prev_char == 'f') { prev_char = 0; state = PRE_FOO; }
+                else if (prev_char == 'b') { prev_char = 0; state = PRE_BAR; }
+                else {
+                    cur_char = uart_getc();
+                    if (cur_char == 'f') { state = PRE_FOO; }
+                    else if (cur_char == 'b') { state = PRE_BAR; }
+                    else { ; }
+                }
                 break;
 
             case PRE_FOO:
@@ -130,6 +135,7 @@ int main(void) {
                 break;
 
             case COMP:
+                prev_char = cur_char;
                 uart_putc(payload);
                 state = CLEAN;
                 break;
